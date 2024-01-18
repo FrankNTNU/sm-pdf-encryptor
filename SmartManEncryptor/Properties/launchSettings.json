@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SmartManEncryptor": {
+      "commandName": "Project",
+      "commandLineArgs": "0000MAXE.pdf 0000MAXE_encrypted.pdf A123456789 true"
+    }
+  }
+}
