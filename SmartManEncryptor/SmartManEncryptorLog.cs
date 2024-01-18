@@ -46,5 +46,27 @@ namespace SmartManEncryptor
             using var logFile = new StreamWriter(logDirectory, true);
             logFile.WriteLine(formattedMessage);
         }
+        // Delete old log files
+        public void DeleteOldLogs(int days)
+        {
+            // Get the directory path
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string? logFolder = Path.GetDirectoryName(Path.Combine(baseDirectory, this.logDirectory));
+
+            // If the directory path is not fully qualified, and the directory does not exist, return
+            if (logFolder == null || !Path.IsPathFullyQualified(logFolder) && !Directory.Exists(logFolder))
+            {
+                return;
+            }
+            var files = Directory.GetFiles(logFolder).Where(f => f.StartsWith("encryptor_log_"));
+            foreach (var file in files)
+            {
+                var fileInfo = new FileInfo(file);
+                if (fileInfo.CreationTime < DateTime.Now.AddDays(-days))
+                {
+                    fileInfo.Delete();
+                }
+            }
+        }
     }
 }

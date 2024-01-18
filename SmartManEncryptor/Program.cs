@@ -5,147 +5,153 @@ using PdfSharp.Pdf.Security;
 using SmartManEncryptor;
 
 using System.Reflection.Metadata;
+using System.Xml.Linq;
 
 internal class Program
 {
-    /*
-     * Call SalLoadAppAndWait( sSmartPath|| 'PaySlip.Exe '|| sTempPath ||sEmpCdArray[nNumber]||'E.pdf '
-                || sTempPath ||sEmpCdArray[nNumber]||'.pdf '||sPassWordArray[nNumber], Window_NotVisible, nReturn)
-     */
-    // Arguments: inputFilePath, outputFilePath, password
-    // Usage: SmartManEncryptor.exe "C:\Users\user\Desktop\test.pdf" "C:\Users\user\Desktop\test_encrypted.pdf" "password" false
-    /*
-     *  程式目的: 將指定檔案加密，也可以壓縮。(若選擇壓縮代表密碼為壓縮密碼)
-        使用方式: SmartManEncryptor.exe “my_file.pdf” “encrypted_my_file.pdf” A123456789 false
-        參數說明: SmartManEncryptor.exe (來源檔案路徑) (加密後的檔案路徑)       (密碼)	   (是否壓縮:預設false)
-     */
-    // SmartManEncryptor.exe 0000MAXE.pdf 0000MAXE_encrypted.pdf A123456789 false
+    // Call SalLoadAppAndWait( sSmartPath|| 'PaySlip.Exe '|| sTempPath ||sEmpCdArray[nNumber]||'E.pdf ' || sTempPath ||sEmpCdArray[nNumber]||'.pdf '||sPassWordArray[nNumber], Window_NotVisible, nReturn)    
+    // SmartManEncryptor.exe -i 0000MAXE.pdf -o 0000MAXE_encrypted.pdf -p A123456789 -c false -l logs -d 90 -r true
     private static void Main(string[] args)
     {
-        Config config = new Config();
-        // A const file name // "smartman_encryptor_config.json"
-        string configFileName = Path.Combine(Directory.GetCurrentDirectory(), "smartman_encryptor_config.json");
-
-        SmartManEncryptorLog log = new SmartManEncryptorLog(config.LogDirectory);
-        log.LogText("configFileName: " + configFileName);
+        // Default values
+        string inputFile = "";
+        string outputFile = "";
+        string password = "";
+        bool compress = false;
+        string logFolder = "logs";
+        int deleteOlderThanDays = 90;
+        bool deleteOriginalFile = false;
+        SmartManEncryptorLog log = new SmartManEncryptorLog(logFolder);
         log.LogText("SmartManEncryptor started.");
         try
         {
-            // Read config from config.json
-            if (File.Exists(configFileName))
+            // Parse command-line arguments
+            for (int i = 0; i < args.Length; i++)
             {
-                string configJson = File.ReadAllText(configFileName);
-                var configContent = Newtonsoft.Json.JsonConvert.DeserializeObject<Config>(configJson);
-                if (configContent != null)
+                switch (args[i])
                 {
-                    config = configContent;
+                    case "-i":
+                        inputFile = args[++i];
+                        break;
+                    case "-o":
+                        outputFile = args[++i];
+                        break;
+                    case "-p":
+                        password = args[++i];
+                        break;
+                    case "-c":
+                        compress = true;
+                        break;
+                    case "-l":
+                        logFolder = args[++i];
+                        log = new SmartManEncryptorLog(logFolder);
+                        break;
+                    case "-d":
+                        if (int.TryParse(args[++i], out int days))
+                            deleteOlderThanDays = days;
+                        else
+                            log.LogError($"Invalid value for -d option: {args[i]}");
+                        break;
+                    case "-r":
+                        if (bool.TryParse(args[++i], out bool delete))
+                            deleteOriginalFile = delete;
+                        else
+                            log.LogError($"Invalid value for -r option: {args[i]}");
+                        break;
+                    default:
+                        log.LogError($"Invalid argument: {args[i]}");
+                        break;
                 }
-                else
-                {
-                    log.LogText($"Config file is empty: {configFileName}");
-                }
-                log.LogText($"Custom log folder: {config.LogDirectory}");
-                log = new SmartManEncryptorLog(config.LogDirectory);
             }
         }
         catch (Exception ex)
         {
-            log.LogError($"Error occurred while reading config file: {configFileName}", ex);
+            log.LogError($"Error occurred while parsing command-line arguments.", ex);
+            return;
+        }
+        // Print all arguments
+        log.LogText($"Input file: {inputFile}");
+        log.LogText($"Output file: {outputFile}");
+        log.LogText(password.Length > 0 ? "Password: ********" : "Password: (empty)");
+        log.LogText($"Compress: {compress}");
+        log.LogText($"Log folder: {logFolder}");
+        log.LogText($"Delete logs older than {deleteOlderThanDays} days");
+        log.LogText($"Delete original file: {deleteOriginalFile}");
+
+        // Check if required arguments are provided
+        if (string.IsNullOrEmpty(inputFile) || string.IsNullOrEmpty(outputFile) || string.IsNullOrEmpty(password))
+        {
+            log.LogError($"Invalid arguments. Usage: SmartManEncryptor.exe -i inputFilePath -o outputFilePath -p password [-c] [-l logFolder] [-d deleteOlderThanDays] [-r deleteOriginalFile]");
+            return;
+        }
+        // Check if input file exists
+        if (!File.Exists(inputFile))
+        {
+            log.LogError($"Input file does not exist: {inputFile}");
             return;
         }
         try
         {
             // Delete old logs
-            if (Directory.Exists(config.LogDirectory))
-            {
-                string[] logFiles = Directory.GetFiles(config.LogDirectory);
-                foreach (string logFile in logFiles)
-                {
-                    FileInfo fileInfo = new FileInfo(logFile);
-                    if (fileInfo.CreationTime < DateTime.Now.AddDays(-config.DeleteLogsAfterDays))
-                    {
-                        File.Delete(logFile);
-                    }
-                }
-                log.LogText($"Old logs deleted.");
-            }
+            log.DeleteOldLogs(deleteOlderThanDays);
         }
         catch (Exception ex)
         {
             log.LogError($"Error occurred while deleting old logs.", ex);
             return;
         }
-        
-        // Check arguments
-        if (args.Length < 3)
-        {
-            log.LogError("Arguments not enough.");
-            return;
-        }
-        // Check if input file exists
-        string inputFilePath = args[0];
-        if (!File.Exists(inputFilePath))
-        {
-            log.LogError($"Input file not found: {inputFilePath}");
-            return;
-        }
-        // Check if output directory exists, if not, create it
-        string outputFilePath = args[1];
-        string outputDirectory = Path.GetDirectoryName(outputFilePath) ?? string.Empty;
-        if (!Directory.Exists(outputDirectory) && outputDirectory is not "")
-        {
-            Directory.CreateDirectory(outputDirectory);
-            log.LogText($"Output directory {outputDirectory} created.");
-        }
-        // Password protect the PDF file using PDFSharp
-        string password = args[2];
-        bool compress = args.Length >= 4 && args[3].ToLower() == "true";
+        // Encrypt PDF
         try
         {
-            log.LogText($"Encrypting file: {inputFilePath}");
-            // Get a fresh copy of the sample PDF file
-            File.Copy(inputFilePath, outputFilePath, true);
-            var fullFilePath = Path.GetFullPath(outputFilePath);
-            log.LogText($"File copied: {fullFilePath}");
-            using (PdfDocument document = PdfReader.Open(fullFilePath))
+            log.LogText($"Encrypting PDF: {inputFile}");
+            using (var inputDocument = PdfReader.Open(inputFile, PdfDocumentOpenMode.Import))
             {
-                document.Options.FlateEncodeMode = PdfFlateEncodeMode.BestSpeed;
-                document.Options.CompressContentStreams = compress;
-                document.Options.NoCompression = !compress;
-                document.SecuritySettings.UserPassword = password;
-                document.SecuritySettings.OwnerPassword = password;
-
-                //PdfSecuritySettings securitySettings = document.SecuritySettings;
-
-                //// Setting one of the passwords automatically sets the security level to 
-                //// PdfDocumentSecurityLevel.Encrypted128Bit.
-                //securitySettings.UserPassword = "user";
-                //securitySettings.OwnerPassword = "owner";
-
-                //// Don't use 40 bit encryption unless needed for compatibility
-                ////securitySettings.DocumentSecurityLevel = PdfDocumentSecurityLevel.Encrypted40Bit;
-
-                //// Restrict some rights.
-                //securitySettings.PermitAnnotations = false;
-                //securitySettings.PermitAssembleDocument = false;
-                //securitySettings.PermitExtractContent = false;
-                //securitySettings.PermitFormsFill = true;
-                //securitySettings.PermitFullQualityPrint = false;
-                //securitySettings.PermitModifyDocument = true;
-                //securitySettings.PermitPrint = false;
-                log.LogText($"Saving file as {fullFilePath}");
-                document.Save(fullFilePath);
+                using (var outputDocument = new PdfDocument())
+                {
+                    foreach (var page in inputDocument.Pages)
+                    {
+                        outputDocument.AddPage(page);
+                    }
+                    if (compress)
+                    {
+                        outputDocument.Options.CompressContentStreams = true;
+                        outputDocument.Options.NoCompression = false;
+                        outputDocument.Options.FlateEncodeMode = PdfFlateEncodeMode.BestCompression;
+                        outputDocument.Options.UseFlateDecoderForJpegImages = PdfUseFlateDecoderForJpegImages.Automatic;
+                    }
+                    outputDocument.SecuritySettings.UserPassword = password;
+                    outputDocument.SecuritySettings.OwnerPassword = password;
+                    outputDocument.SecuritySettings.PermitAnnotations = false;
+                    outputDocument.SecuritySettings.PermitAssembleDocument = false;
+                    outputDocument.SecuritySettings.PermitExtractContent = false;
+                    outputDocument.SecuritySettings.PermitFormsFill = false;
+                    outputDocument.SecuritySettings.PermitFullQualityPrint = false;
+                    outputDocument.SecuritySettings.PermitModifyDocument = false;
+                    outputDocument.SecuritySettings.PermitPrint = false;
+                    outputDocument.Save(outputFile);
+                }
+                log.LogText($"PDF encrypted: {outputFile}");
             }
-            log.LogText($"File encrypted: {fullFilePath}");
         }
         catch (Exception ex)
         {
-            log.LogError($"Error occurred while encrypting file: {outputFilePath}", ex);
+            log.LogError($"Error occurred while encrypting PDF.", ex);
+            return;
+        }
+        // Delete original file
+        if (deleteOriginalFile)
+        {
+            try
+            {
+                File.Delete(inputFile);
+                log.LogText($"Original file deleted: {inputFile}");
+            }
+            catch (Exception ex)
+            {
+                log.LogError($"Error occurred while deleting original file.", ex);
+                return;
+            }
         }
     }
 }
-public class Config
-{
-    public string LogDirectory { get; set; } = "logs";
-    public int DeleteLogsAfterDays { get; set; } = 90;
-}
+
