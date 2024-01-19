@@ -28,32 +28,32 @@ internal class Program
             {
                 switch (args[i])
                 {
-                    case "-i" or "-input":
+                    case "-i" or "--input":
                         inputFile = args[++i];
                         break;
-                    case "-o" or "-output":
+                    case "-o" or "--output":
                         outputFile = args[++i];
                         break;
-                    case "-p" or "-password":
+                    case "-p" or "--password":
                         password = args[++i];
                         break;
-                    case "-c" or "-compress":
+                    case "-c" or "--compress":
                         compress = true;
                         break;
-                    case "-l" or "-log-folder":
+                    case "-l" or "--log-folder":
                         logFolder = args[++i];
                         log = new SmartManEncryptorLog(logFolder);
                         break;
-                    case "-d" or "-delete-before-days":
+                    case "-d" or "--delete-before-days":
                         if (int.TryParse(args[++i], out int days))
                             deleteOlderThanDays = days;
                         else
                             log.LogError($"Invalid value for -d option (should be a number): {args[i]}");
                         break;
-                    case "-r" or "-remove-input-file":
+                    case "-r" or "--remove-input-file":
                         deleteOriginalFile = true;
                         break;
-                    case "-v" or "-verbose":
+                    case "-v" or "--verbose":
                             isVerbose = true;
                         break;
                     default:
@@ -74,7 +74,7 @@ internal class Program
             log.LogText($"Output file: {outputFile}");
             // Generate * of the password's length
             string mask = new string('*', password.Length);
-            log.LogText(password.Length > 0 ? $"Password: ${mask}" : "Password: (empty)");
+            log.LogText(password.Length > 0 ? $"Password: {mask}" : "Password: (empty)");
             log.LogText($"Compress: {compress}");
             log.LogText($"Log folder: {logFolder}");
             log.LogText($"Delete logs older than {deleteOlderThanDays} days");
@@ -129,18 +129,17 @@ internal class Program
                     outputDocument.Options.UseFlateDecoderForJpegImages = PdfUseFlateDecoderForJpegImages.Automatic;
                     outputDocument.SecuritySettings.UserPassword = password;
                     outputDocument.SecuritySettings.OwnerPassword = password;
-                    outputDocument.SecuritySettings.PermitAnnotations = false;
-                    outputDocument.SecuritySettings.PermitAssembleDocument = false;
-                    outputDocument.SecuritySettings.PermitExtractContent = false;
-                    outputDocument.SecuritySettings.PermitFormsFill = false;
-                    outputDocument.SecuritySettings.PermitFullQualityPrint = false;
-                    outputDocument.SecuritySettings.PermitModifyDocument = false;
-                    outputDocument.SecuritySettings.PermitPrint = false;
+                    //outputDocument.SecuritySettings.PermitAnnotations = false;
+                    //outputDocument.SecuritySettings.PermitAssembleDocument = false;
+                    //outputDocument.SecuritySettings.PermitExtractContent = false;
+                    //outputDocument.SecuritySettings.PermitFormsFill = false;
+                    //outputDocument.SecuritySettings.PermitFullQualityPrint = false;
+                    //outputDocument.SecuritySettings.PermitModifyDocument = false;
+                    //outputDocument.SecuritySettings.PermitPrint = false;
                     outputDocument.Save(outputFile);
                 }
                 log.LogText($"PDF encrypted: {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB");
             }
-
             // Use System.IO.Compression to compress the output PDF file
             if (compress)
             {
