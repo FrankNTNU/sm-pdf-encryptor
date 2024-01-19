@@ -1,16 +1,13 @@
 ﻿using PdfSharp.Pdf;
 using PdfSharp.Pdf.IO;
-using PdfSharp.Pdf.Security;
-
+using System.IO.Compression;
 using SmartManEncryptor;
 
-using System.Reflection.Metadata;
-using System.Xml.Linq;
 
 internal class Program
 {
-    // Call SalLoadAppAndWait( sSmartPath|| 'PaySlip.Exe '|| sTempPath ||sEmpCdArray[nNumber]||'E.pdf ' || sTempPath ||sEmpCdArray[nNumber]||'.pdf '||sPassWordArray[nNumber], Window_NotVisible, nReturn)    
-    // SmartManEncryptor.exe -i 0000MAXE.pdf -o 0000MAXE_encrypted.pdf -p A123456789 -c false -l logs -d 90 -r true
+    // Call SalLoadAppAndWait( sSmartPath|| 'PaySlip.Exe '|| sTempPath ||sEmpCdArray[nNumber]||'E.pdf ' || sTempPath ||sEmpCdArray[nNumber]||'.pdf '||sPassWordArray[nNumber], Window_NotVisible, nReturn)
+    // sm-pdf-encrypt.exe -i my_file.pdf -o my_encrypted_file.pdf -p A123456789 -r
     private static void Main(string[] args)
     {
         // Default values
@@ -21,8 +18,9 @@ internal class Program
         string logFolder = "logs";
         int deleteOlderThanDays = 90;
         bool deleteOriginalFile = false;
+        bool isVerbose = false;
         SmartManEncryptorLog log = new SmartManEncryptorLog(logFolder);
-        log.LogText("SmartManEncryptor started.");
+        log.LogText("sm-pdf-encrypt.exe started.");
         try
         {
             // Parse command-line arguments
@@ -30,36 +28,36 @@ internal class Program
             {
                 switch (args[i])
                 {
-                    case "-i":
+                    case "-i" or "-input":
                         inputFile = args[++i];
                         break;
-                    case "-o":
+                    case "-o" or "-output":
                         outputFile = args[++i];
                         break;
-                    case "-p":
+                    case "-p" or "-password":
                         password = args[++i];
                         break;
-                    case "-c":
+                    case "-c" or "-compress":
                         compress = true;
                         break;
-                    case "-l":
+                    case "-l" or "-log-folder":
                         logFolder = args[++i];
                         log = new SmartManEncryptorLog(logFolder);
                         break;
-                    case "-d":
+                    case "-d" or "-delete-before-days":
                         if (int.TryParse(args[++i], out int days))
                             deleteOlderThanDays = days;
                         else
-                            log.LogError($"Invalid value for -d option: {args[i]}");
+                            log.LogError($"Invalid value for -d option (should be a number): {args[i]}");
                         break;
-                    case "-r":
-                        if (bool.TryParse(args[++i], out bool delete))
-                            deleteOriginalFile = delete;
-                        else
-                            log.LogError($"Invalid value for -r option: {args[i]}");
+                    case "-r" or "-remove-input-file":
+                        deleteOriginalFile = true;
+                        break;
+                    case "-v" or "-verbose":
+                            isVerbose = true;
                         break;
                     default:
-                        log.LogError($"Invalid argument: {args[i]}");
+                        log.LogError($"Invalid argument (Should be -i, -o, -p, -c, -l, -d, or -r): {args[i]}");
                         break;
                 }
             }
@@ -70,18 +68,23 @@ internal class Program
             return;
         }
         // Print all arguments
-        log.LogText($"Input file: {inputFile}");
-        log.LogText($"Output file: {outputFile}");
-        log.LogText(password.Length > 0 ? "Password: ********" : "Password: (empty)");
-        log.LogText($"Compress: {compress}");
-        log.LogText($"Log folder: {logFolder}");
-        log.LogText($"Delete logs older than {deleteOlderThanDays} days");
-        log.LogText($"Delete original file: {deleteOriginalFile}");
+        if (isVerbose)
+        {
+            log.LogText($"Input file: {inputFile}");
+            log.LogText($"Output file: {outputFile}");
+            // Generate * of the password's length
+            string mask = new string('*', password.Length);
+            log.LogText(password.Length > 0 ? $"Password: ${mask}" : "Password: (empty)");
+            log.LogText($"Compress: {compress}");
+            log.LogText($"Log folder: {logFolder}");
+            log.LogText($"Delete logs older than {deleteOlderThanDays} days");
+            log.LogText($"Remove original file: {deleteOriginalFile}");
+        }
 
         // Check if required arguments are provided
         if (string.IsNullOrEmpty(inputFile) || string.IsNullOrEmpty(outputFile) || string.IsNullOrEmpty(password))
         {
-            log.LogError($"Invalid arguments. Usage: SmartManEncryptor.exe -i inputFilePath -o outputFilePath -p password [-c] [-l logFolder] [-d deleteOlderThanDays] [-r deleteOriginalFile]");
+            log.LogError($"Invalid arguments. Some required arguments are missing.");
             return;
         }
         // Check if input file exists
@@ -94,6 +97,7 @@ internal class Program
         {
             // Delete old logs
             log.DeleteOldLogs(deleteOlderThanDays);
+            log.LogText($"Old logs deleted. Logs older than {deleteOlderThanDays} days are removed.");
         }
         catch (Exception ex)
         {
@@ -103,22 +107,26 @@ internal class Program
         // Encrypt PDF
         try
         {
-            log.LogText($"Encrypting PDF: {inputFile}");
-            using (var inputDocument = PdfReader.Open(inputFile, PdfDocumentOpenMode.Import))
+            string outputDirectory = Path.GetDirectoryName(outputFile) ?? "";
+
+            if (!Directory.Exists(outputDirectory) && outputDirectory is not "")
             {
-                using (var outputDocument = new PdfDocument())
+                Directory.CreateDirectory(outputDirectory);
+                log.LogText($"Output directory created: {outputDirectory}");
+            }
+            log.LogText($"PDF to encrypt: {inputFile}. Size: {GetFileSizeInKB(inputFile)} KB");
+            using (var inputDocument = PdfSharp.Pdf.IO.PdfReader.Open(inputFile, PdfDocumentOpenMode.Import))
+            {
+                using (var outputDocument = new PdfSharp.Pdf.PdfDocument())
                 {
                     foreach (var page in inputDocument.Pages)
                     {
                         outputDocument.AddPage(page);
                     }
-                    if (compress)
-                    {
-                        outputDocument.Options.CompressContentStreams = true;
-                        outputDocument.Options.NoCompression = false;
-                        outputDocument.Options.FlateEncodeMode = PdfFlateEncodeMode.BestCompression;
-                        outputDocument.Options.UseFlateDecoderForJpegImages = PdfUseFlateDecoderForJpegImages.Automatic;
-                    }
+                    outputDocument.Options.CompressContentStreams = true;
+                    outputDocument.Options.NoCompression = false;
+                    outputDocument.Options.FlateEncodeMode = PdfFlateEncodeMode.BestCompression;
+                    outputDocument.Options.UseFlateDecoderForJpegImages = PdfUseFlateDecoderForJpegImages.Automatic;
                     outputDocument.SecuritySettings.UserPassword = password;
                     outputDocument.SecuritySettings.OwnerPassword = password;
                     outputDocument.SecuritySettings.PermitAnnotations = false;
@@ -130,7 +138,33 @@ internal class Program
                     outputDocument.SecuritySettings.PermitPrint = false;
                     outputDocument.Save(outputFile);
                 }
-                log.LogText($"PDF encrypted: {outputFile}");
+                log.LogText($"PDF encrypted: {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB");
+            }
+
+            // Use System.IO.Compression to compress the output PDF file
+            if (compress)
+            {
+                log.LogText($"Compressing file {outputFile}...");
+                try
+                {
+                    // zip the file
+                    string zipFileName = $"{outputFile}.zip";
+                    // If the zip file already exists, delete it
+                    if (File.Exists(zipFileName))
+                    {
+                        File.Delete(zipFileName);
+                        log.LogText($"Existing zip file removed: {zipFileName}");
+                    }
+                    using (var zip = ZipFile.Open(zipFileName, ZipArchiveMode.Create))
+                    {
+                        zip.CreateEntryFromFile(outputFile, Path.GetFileName(outputFile), CompressionLevel.SmallestSize);
+                    }
+                    log.LogText($"PDF compressed: {zipFileName}. Size: {GetFileSizeInKB(zipFileName)} KB");
+                }
+                catch (Exception ex)
+                {
+                    log.LogError($"Error occurred while compressing the file: {outputFile}", ex);
+                }
             }
         }
         catch (Exception ex)
@@ -144,14 +178,24 @@ internal class Program
             try
             {
                 File.Delete(inputFile);
-                log.LogText($"Original file deleted: {inputFile}");
+                log.LogText($"Original file removed: {inputFile}");
+                // Delete the encrypted file
+                File.Delete(outputFile);
+                log.LogText($"Encrypted file removed: {outputFile}");
             }
             catch (Exception ex)
             {
-                log.LogError($"Error occurred while deleting original file.", ex);
+                log.LogError($"Error occurred while removing original file.", ex);
                 return;
             }
         }
+        // Exit
+        log.LogText("sm-pdf-encrypt.exe completed.");
+    }
+    // Get file size in KB helper
+    private static long GetFileSizeInKB(string fileName)
+    {
+        return new FileInfo(fileName).Length / 1024;
     }
 }
 

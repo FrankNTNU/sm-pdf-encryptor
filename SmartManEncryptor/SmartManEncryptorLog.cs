@@ -19,13 +19,20 @@ namespace SmartManEncryptor
             }
             else
             {
-                string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                string directoryPath = Path.Combine(baseDirectory, logDirectory);
-                if (!Path.IsPathFullyQualified(logDirectory) && !Directory.Exists(directoryPath))
+                // Check if the logDirectory is a fully qualified path
+                if (!Path.IsPathFullyQualified(logDirectory))
                 {
-                    Directory.CreateDirectory(directoryPath);
+                    // Combine with the base directory
+                    logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, logDirectory);
                 }
-                this.logDirectory = Path.Combine(directoryPath, logFileName);
+
+                // Ensure the directory exists
+                if (!Directory.Exists(logDirectory))
+                {
+                    Directory.CreateDirectory(logDirectory);
+                }
+
+                this.logDirectory = Path.Combine(logDirectory, logFileName);
             }
         }
         public void LogText(string message)

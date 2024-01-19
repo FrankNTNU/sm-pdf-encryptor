@@ -2,7 +2,7 @@
   "profiles": {
     "SmartManEncryptor": {
       "commandName": "Project",
-      "commandLineArgs": "-i 0000MAXE.pdf -o 0000MAXE_encrypted.pdf -p A123456789 -c false"
+      "commandLineArgs": "-i \"0000MAXE.pdf\" -o \"0000MAXE_encrypted.pdf\" -c -d 30 -l \"logs\" -p 12345 -v"
     }
   }
 }
