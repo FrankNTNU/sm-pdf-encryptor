@@ -115,23 +115,6 @@ internal class Program
             }
             log.LogText($"PDF to encrypt: {inputFile}. Size: {GetFileSizeInKB(inputFile)} KB");
 
-            // Use Docotic.Pdf to encrypt PDF file (paid but good)
-            //using (BitMiracle.Docotic.Pdf.PdfDocument doc = new BitMiracle.Docotic.Pdf.PdfDocument(inputFile))
-            //{
-            //    // Add password using BitMiracle.Docotic.Pdf
-            //    doc.Save(outputFile, new BitMiracle.Docotic.Pdf.PdfSaveOptions { EncryptionHandler = new PdfStandardEncryptionHandler(password, password) }) ;
-            //}
-            //log.LogText($"PDF encrypted (Docotic.Pdf): {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB");
-
-            // Use Spire.PDF to encrypt PDF file (paid but good)
-            //using (var document = new Spire.Pdf.PdfDocument())
-            //{
-            //    document.LoadFromFile(inputFile);
-            //    document.Security.Encrypt(password);
-            //    document.SaveToFile(outputFile);
-            //}
-            //log.LogText($"PDF encrypted (Spire): {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB");
-
             // Use iTextSharp to encrypt PDF file
             log.LogText($"Encrypting file: {inputFile}");
             using (Stream input = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -152,52 +135,9 @@ internal class Program
                             PdfWriter.ENCRYPTION_AES_256
                         );
                     }
-                    // PdfEncryptor.Encrypt(reader, output, true, password, password, PdfWriter.ALLOW_SCREENREADERS);
                 }
             }
             log.LogText($"PDF encrypted: {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB.");
-            // Use PdfSharpCore to encrypt the PDF file (too large)
-            //using (var inputDocument = PdfSharpCore.Pdf.IO.PdfReader.Open(inputFile, PdfSharpCore.Pdf.IO.PdfDocumentOpenMode.InformationOnly, accuracy: PdfSharpCore.Pdf.IO.enums.PdfReadAccuracy.Moderate))
-            //{
-            //    var document = new PdfSharpCore.Pdf.PdfDocument();
-            //    foreach (var page in inputDocument.Pages)
-            //    {
-            //        document.AddPage(page);
-            //    }
-            //    // print document.FileSize
-            //    log.LogText($"PDF file size before (PdfSharpCore): {document.FileSize} bytes");
-            //    //document.Options.FlateEncodeMode = PdfSharpCore.Pdf.PdfFlateEncodeMode.BestCompression;
-            //    //document.Options.NoCompression = false;
-            //    //document.Options.CompressContentStreams = true;
-            //    //document.Options.UseFlateDecoderForJpegImages = PdfSharpCore.Pdf.PdfUseFlateDecoderForJpegImages.Automatic;
-            //    //document.Options.UseFlateDecoderForJpegImages = PdfSharpCore.Pdf.PdfUseFlateDecoderForJpegImages.Never;
-            //    //document.SecuritySettings.UserPassword = password;
-            //    //document.SecuritySettings.OwnerPassword = password;
-            //    document.Save(outputFile);
-            //    log.LogText($"PDF file size after (PdfSharpCore): {document.FileSize} bytes");
-            //    document.Dispose();
-            //    log.LogText($"PDF encrypted (PdfSharpCore): {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB");
-            //}
-
-            // PdfSharp (too large)
-            //using (var inputDocument = PdfSharp.Pdf.IO.PdfReader.Open(inputFile, PdfDocumentOpenMode.Import))
-            //{
-            //    using (var outputDocument = new PdfSharp.Pdf.PdfDocument())
-            //    {
-            //        foreach (var page in inputDocument.Pages)
-            //        {
-            //            outputDocument.AddPage(page);
-            //        }
-            //        //outputDocument.Options.CompressContentStreams = true;
-            //        //outputDocument.Options.NoCompression = false;
-            //        //outputDocument.Options.FlateEncodeMode = PdfFlateEncodeMode.BestCompression;
-            //        //outputDocument.Options.UseFlateDecoderForJpegImages = PdfUseFlateDecoderForJpegImages.Automatic;
-            //        //outputDocument.SecuritySettings.UserPassword = password;
-            //        //outputDocument.SecuritySettings.OwnerPassword = password;
-            //        outputDocument.Save(outputFile);
-            //    }
-            //    log.LogText($"PDF encrypted: {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB");
-            //}
 
             // Use System.IO.Compression to compress the output PDF file
             if (compress)
