@@ -7,7 +7,7 @@ internal class Program
 {
     // Call SalLoadAppAndWait( sSmartPath|| 'PaySlip.Exe '|| sTempPath ||sEmpCdArray[nNumber]||'E.pdf ' || sTempPath ||sEmpCdArray[nNumber]||'.pdf '||sPassWordArray[nNumber], Window_NotVisible, nReturn)
     // sm-pdf-encrypt.exe -i my_file.pdf -o my_encrypted_file.pdf -p A123456789 -r
-    private static void Main(string[] args)
+    private static int Main(string[] args)
     {
         // Default values
         string inputFile = "";
@@ -64,7 +64,7 @@ internal class Program
         catch (Exception ex)
         {
             log.LogError($"Error occurred while parsing command-line arguments.", ex);
-            return;
+            return -1;
         }
         // Print all arguments
         if (isVerbose)
@@ -84,24 +84,24 @@ internal class Program
         if (string.IsNullOrEmpty(inputFile) || string.IsNullOrEmpty(outputFile) || string.IsNullOrEmpty(password))
         {
             log.LogError($"Invalid arguments. Some required arguments are missing.");
-            return;
+            return -1;
         }
         // Check if input file exists
         if (!File.Exists(inputFile))
         {
             log.LogError($"Input file does not exist: {inputFile}");
-            return;
+            return -1;
         }
         try
         {
             // Delete old logs
             log.DeleteOldLogs(deleteOlderThanDays);
-            log.LogText($"Old logs deleted. Logs older than {deleteOlderThanDays} days are removed.");
+            log.LogText($"Old logs deleted. Logs older than {deleteOlderThanDays} days are deleted.");
         }
         catch (Exception ex)
         {
             log.LogError($"Error occurred while deleting old logs.", ex);
-            return;
+            return -1;
         }
         // Encrypt PDF
         try
@@ -116,25 +116,23 @@ internal class Program
             log.LogText($"PDF to encrypt: {inputFile}. Size: {GetFileSizeInKB(inputFile)} KB");
 
             // Use iTextSharp to encrypt PDF file
-            log.LogText($"Encrypting file: {inputFile}");
+            log.LogText($"Encrypting file: {inputFile}...");
             using (Stream input = new FileStream(inputFile, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 using (Stream output = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
                     iTextSharp.text.pdf.PdfReader reader = new iTextSharp.text.pdf.PdfReader(input);
                     // Create a stamper with compression settings
-                    using (iTextSharp.text.pdf.PdfStamper stamper = new iTextSharp.text.pdf.PdfStamper(reader, output))
-                    {
-                        stamper.SetFullCompression();
+                    using iTextSharp.text.pdf.PdfStamper stamper = new iTextSharp.text.pdf.PdfStamper(reader, output);
+                    stamper.SetFullCompression();
 
-                        // Set password protection
-                        stamper.SetEncryption(
-                            Encoding.UTF8.GetBytes(password),
-                            Encoding.UTF8.GetBytes(password),
-                            PdfWriter.ALLOW_SCREENREADERS,
-                            PdfWriter.ENCRYPTION_AES_256
-                        );
-                    }
+                    // Set password protection
+                    stamper.SetEncryption(
+                        Encoding.UTF8.GetBytes(password),
+                        Encoding.UTF8.GetBytes(password),
+                        PdfWriter.ALLOW_SCREENREADERS,
+                        PdfWriter.ENCRYPTION_AES_256
+                    );
                 }
             }
             log.LogText($"PDF encrypted: {outputFile}. Size: {GetFileSizeInKB(outputFile)} KB.");
@@ -168,7 +166,7 @@ internal class Program
         catch (Exception ex)
         {
             log.LogError($"Error occurred while encrypting PDF.", ex);
-            return;
+            return -1;
         }
         // Delete original file
         if (deleteOriginalFile)
@@ -184,11 +182,12 @@ internal class Program
             catch (Exception ex)
             {
                 log.LogError($"Error occurred while removing original file.", ex);
-                return;
+                return -1;
             }
         }
         // Exit
         log.LogText("sm-pdf-encrypt.exe completed.");
+        return 0;
     }
     // Get file size in KB helper
     private static long GetFileSizeInKB(string fileName) => new FileInfo(fileName).Length / 1024;
