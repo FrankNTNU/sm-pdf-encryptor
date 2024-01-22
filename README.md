@@ -39,22 +39,22 @@ sm-pdf-encrypt.exe -i "C:/Users/Frank Huang/Desktop/SmartManEncryptor/0000MAXE.p
 This example encrypts 0000MAXE.pdf, compresses the file, and outputs it to ./output_folder/0000MAXE_encrypted.pdf. It uses the password 12345, records detailed information in logs, and deletes logs older than 30 days. The resulting log is stored in C:/Users/Frank Huang/Desktop/my_log_folder. The original input file is deleted.
 
 ## Troubleshooting
-- 	Invalid value for -d option (should be a number)
+- 	Invalid value for -d option (should be a number)  
 	Provide a positive integer for the number of days to keep log files.
--	Invalid argument (Should be -i, -o, -p, -c, -l, -d, or -r)
+-	Invalid argument (Should be -i, -o, -p, -c, -l, -d, or -r)  
 	Ensure that the provided arguments match the valid options.
--	Error occurred while parsing command-line arguments.
+-	Error occurred while parsing command-line arguments.  
 	Refer to the error message or notify the developer for unexpected errors during parameter parsing.
--	Invalid arguments. Some required arguments are missing.
+-	Invalid arguments. Some required arguments are missing.  
 	Ensure all required parameters are provided.
--	Input file does not exist
+-	Input file does not exist  
 	The specified input file does not exist.
--	Error occurred while deleting old logs.
+-	Error occurred while deleting old logs.  
 	Unexpected error while deleting old log files. Refer to the error message or notify the developer.
--	Error occurred while encrypting PDF.
+-	Error occurred while encrypting PDF.  
 	Error during PDF encryption. Refer to the error message or notify the developer.
--	Error occurred while compressing the file
+-	Error occurred while compressing the file  
 	Error during file compression. Refer to the error message or notify the developer.
--	Error occurred while removing the original file.
+-	Error occurred while removing the original file.  
 	Error during the removal of the original file. Refer to the error message or notify the developer.
 
